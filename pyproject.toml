@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openshock"  # what you'll `pip install`
+version = "0.1.0"
+description = "A Python client for the OpenShock API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+authors = [
+  { name = "OpenShock", email = "contact@openshock.app" },
+]
+
+dependencies = [
+  "httpx>=0.28.1",
+]
+
+keywords = ["openshock", "api", "shock collar"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/OpenShock/python-api"
+Source = "https://github.com/OpenShock/python-api"
