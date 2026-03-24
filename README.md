@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/openshock)](https://pypi.org/project/openshock/)
 [![License](https://img.shields.io/github/license/OpenShock/SDK.Python)](LICENSE)
 
-OpenShock Python SDK to integrate with an OpenShock backend easily. Provides a typed REST API client with planned support for live WebSocket connections.
+The official OpenShock Python SDK to integrate with an OpenShock backend easily. Provides a typed REST API client with planned support for live WebSocket connections.
 
 ## Install
 
