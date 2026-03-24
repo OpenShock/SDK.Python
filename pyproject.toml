@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openshock"
-version = "0.1.0"
+version = "0.1.0b1"
 description = "The official OpenShock Python SDK to integrate with an OpenShock backend easily"
 readme = "README.md"
 requires-python = ">=3.10"
