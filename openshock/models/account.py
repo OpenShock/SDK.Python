@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import Any
 from uuid import UUID
 
-from .common import parse_dt, parse_uuid, PermissionType, RoleType
+from .common import PermissionType, RoleType, parse_dt, require_dt, require_uuid
 
 
 @dataclass
@@ -15,13 +15,13 @@ class User:
     name: str
     email: str
     image: str
-    roles: List[RoleType]
+    roles: list[RoleType]
     rank: str
 
     @classmethod
-    def from_dict(cls, data: dict) -> "User":
+    def from_dict(cls, data: dict[str, Any]) -> User:
         return cls(
-            id=parse_uuid(data["id"]),
+            id=require_uuid(data["id"]),
             name=data["name"],
             email=data["email"],
             image=data["image"],
@@ -37,14 +37,14 @@ class Token:
     created_on: datetime
     valid_until: datetime | None
     last_used: datetime | None
-    permissions: List[PermissionType]
+    permissions: list[PermissionType]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Token":
+    def from_dict(cls, data: dict[str, Any]) -> Token:
         return cls(
-            id=parse_uuid(data["id"]),
+            id=require_uuid(data["id"]),
             name=data["name"],
-            created_on=parse_dt(data["createdOn"]),
+            created_on=require_dt(data["createdOn"]),
             valid_until=parse_dt(data.get("validUntil")),
             last_used=parse_dt(data.get("lastUsed")),
             permissions=list(data.get("permissions", [])),

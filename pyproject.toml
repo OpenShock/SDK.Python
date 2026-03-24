@@ -3,28 +3,68 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "openshock"  # what you'll `pip install`
+name = "openshock"
 version = "0.1.0"
-description = "A Python client for the OpenShock API"
+description = "Python SDK for the OpenShock platform"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-
 authors = [
   { name = "OpenShock", email = "contact@openshock.app" },
 ]
-
 dependencies = [
   "httpx>=0.28.1",
 ]
-
-keywords = ["openshock", "api", "shock collar"]
+keywords = ["openshock", "api", "iot"]
 classifiers = [
+  "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
+  "Typing :: Typed",
 ]
 
 [project.urls]
-Homepage = "https://github.com/OpenShock/python-api"
-Source = "https://github.com/OpenShock/python-api"
+Homepage = "https://openshock.org"
+Documentation = "https://github.com/OpenShock/SDK.Python"
+Repository = "https://github.com/OpenShock/SDK.Python"
+Issues = "https://github.com/OpenShock/SDK.Python/issues"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov",
+  "mypy>=1.10",
+  "ruff>=0.8",
+]
+
+# --- ruff (linter + formatter) ---
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["openshock"]
+
+# --- mypy ---
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# --- pytest ---
+[tool.pytest.ini_options]
+testpaths = ["tests"]

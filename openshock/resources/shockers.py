@@ -1,88 +1,212 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
+from uuid import UUID
+
+from ..models import (
+    Control,
+    ShareCode,
+    ShareInfo,
+    ShockerLimits,
+    ShockerLog,
+    ShockerPermissions,
+)
+
+if TYPE_CHECKING:
+    from ..client import _BaseClient
 
 
 class ShockersResource:
-    def __init__(self, client: "OpenShockClient") -> None:
+    def __init__(self, client: _BaseClient) -> None:
         self._client = client
 
-    # --- lists & info ------------------------------------------------------
+    # --- lists & info ---
 
-    def list_own(self) -> List[Dict[str, Any]]:
-        """
-        GET /1/shockers/own
-        List all shockers belonging to the authenticated user.
-
-        Returns array of devices-with-shockers.
-        """
+    def list_own(self) -> list[dict[str, Any]]:
+        """GET /1/shockers/own — List all shockers belonging to the authenticated user."""
         resp = self._client._request("GET", "/1/shockers/own")
         return resp.get("data") or []
 
-    def list_shared(self) -> List[Dict[str, Any]]:
-        """
-        GET /1/shockers/shared
-        List all shockers shared with the authenticated user.
-        """
+    def list_shared(self) -> list[dict[str, Any]]:
+        """GET /1/shockers/shared — List all shockers shared with the authenticated user."""
         resp = self._client._request("GET", "/1/shockers/shared")
         return resp.get("data") or []
 
-    def get(self, shocker_id: str) -> Dict[str, Any]:
-        """
-        GET /1/shockers/{shockerId}
-        Get information about a specific shocker (with its device).
-        """
+    def get(self, shocker_id: str | UUID) -> dict[str, Any]:
+        """GET /1/shockers/{shockerId} — Get shocker info with device details."""
         resp = self._client._request("GET", f"/1/shockers/{shocker_id}")
         return resp.get("data") or {}
 
-    # --- logs --------------------------------------------------------------
+    # --- CRUD ---
 
-    def logs(
+    def register(
         self,
-        shocker_id: str,
         *,
-        offset: int = 0,
-        limit: int = 100,
-    ) -> List[Dict[str, Any]]:
-        """
-        GET /1/shockers/{shockerId}/logs
-        Get logs for a shocker (offset + limit, limit max 500).
-        """
-        params = {"offset": offset, "limit": limit}
-        resp = self._client._request("GET", f"/1/shockers/{shocker_id}/logs", params=params)
-        return resp.get("data") or []
-
-    # --- pause / control ---------------------------------------------------
-
-    def pause(self, shocker_id: str, pause: bool) -> bool:
-        """
-        POST /1/shockers/{shockerId}/pause
-        Pause or unpause a shocker. Body is { "pause": bool }.
-
-        Returns the underlying boolean data field.
-        """
-        body = {"pause": pause}
-        resp = self._client._request("POST", f"/1/shockers/{shocker_id}/pause", json=body)
-        if isinstance(resp, dict):
-            return bool(resp.get("data"))
-        return bool(resp)
-
-    def control(self, controls: Sequence[Dict[str, Any]]) -> Any:
-        """
-        POST /1/shockers/control  (deprecated in favor of /2/shockers/control, but still usable)
-
-        'controls' should be a sequence of Control objects as dictionaries
-        following the 'Control' schema from the spec:
-        {
-          "shockerId": "...",
-          "type": "...",   # e.g. "shock", "vibrate", etc.
-          "intensity": 50,
-          "duration": 1000
+        name: str,
+        rf_id: int,
+        device: str | UUID,
+        model: str,
+    ) -> str:
+        """POST /1/shockers — Register a new shocker. Returns the new shocker ID."""
+        body = {
+            "name": name,
+            "rfId": rf_id,
+            "device": str(device),
+            "model": model,
         }
+        resp: Any = self._client._request("POST", "/1/shockers", json=body)
+        if isinstance(resp, dict):
+            return str(resp.get("data", ""))
+        return str(resp)
 
-        This just POSTs the JSON array and returns the raw response.
-        """
+    def edit(
+        self,
+        shocker_id: str | UUID,
+        *,
+        name: str | None = None,
+        rf_id: int | None = None,
+        device: str | UUID | None = None,
+        model: str | None = None,
+    ) -> None:
+        """PATCH /1/shockers/{shockerId} — Update a shocker."""
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if rf_id is not None:
+            body["rfId"] = rf_id
+        if device is not None:
+            body["device"] = str(device)
+        if model is not None:
+            body["model"] = model
+        self._client._request("PATCH", f"/1/shockers/{shocker_id}", json=body)
+
+    def delete(self, shocker_id: str | UUID) -> None:
+        """DELETE /1/shockers/{shockerId} — Remove a shocker."""
+        self._client._request("DELETE", f"/1/shockers/{shocker_id}")
+
+    # --- control & pause ---
+
+    def control(
+        self,
+        controls: Sequence[Control | dict[str, Any]],
+        *,
+        custom_name: str | None = None,
+    ) -> Any:
+        """POST /2/shockers/control — Send control commands to shockers (V2)."""
         if not controls:
             raise ValueError("controls must be a non-empty sequence")
 
-        return self._client._request("POST", "/1/shockers/control", json=list(controls))
+        shocks = []
+        for c in controls:
+            if isinstance(c, Control):
+                shocks.append(c.to_dict())
+            else:
+                shocks.append(c)
+
+        body: dict[str, Any] = {"shocks": shocks}
+        if custom_name is not None:
+            body["customName"] = custom_name
+
+        return self._client._request("POST", "/2/shockers/control", json=body)
+
+    def pause(self, shocker_id: str | UUID, pause: bool) -> Any:
+        """POST /1/shockers/{shockerId}/pause — Pause or unpause a shocker."""
+        return self._client._request("POST", f"/1/shockers/{shocker_id}/pause", json={"pause": pause})
+
+    # --- logs ---
+
+    def logs(
+        self,
+        shocker_id: str | UUID,
+        *,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> list[ShockerLog]:
+        """GET /1/shockers/{shockerId}/logs — Get control log history."""
+        params = {"offset": offset, "limit": limit}
+        resp = self._client._request("GET", f"/1/shockers/{shocker_id}/logs", params=params)
+        return [ShockerLog.from_dict(e) for e in (resp.get("data") or [])]
+
+    def all_logs(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """GET /1/shockers/logs — Get logs across all owned shockers."""
+        params = {"offset": offset, "limit": limit}
+        resp = self._client._request("GET", "/1/shockers/logs", params=params)
+        return resp.get("data") or []
+
+    # --- shares ---
+
+    def get_shares(self, shocker_id: str | UUID) -> list[ShareInfo]:
+        """GET /1/shockers/{shockerId}/shares — Get all user shares for a shocker."""
+        resp = self._client._request("GET", f"/1/shockers/{shocker_id}/shares")
+        return [ShareInfo.from_dict(s) for s in (resp.get("data") or [])]
+
+    def create_share_code(
+        self,
+        shocker_id: str | UUID,
+        *,
+        permissions: ShockerPermissions,
+        limits: ShockerLimits,
+    ) -> str:
+        """POST /1/shockers/{shockerId}/shares — Create a share code. Returns code ID."""
+        body = {
+            "permissions": permissions.to_dict(),
+            "limits": limits.to_dict(),
+        }
+        resp: Any = self._client._request("POST", f"/1/shockers/{shocker_id}/shares", json=body)
+        if isinstance(resp, dict):
+            return str(resp.get("data", ""))
+        return str(resp)
+
+    def list_share_codes(self, shocker_id: str | UUID) -> list[ShareCode]:
+        """GET /1/shockers/{shockerId}/shareCodes — List all share codes."""
+        resp = self._client._request("GET", f"/1/shockers/{shocker_id}/shareCodes")
+        return [ShareCode.from_dict(c) for c in (resp.get("data") or [])]
+
+    def update_share(
+        self,
+        shocker_id: str | UUID,
+        shared_with_user_id: str | UUID,
+        *,
+        permissions: ShockerPermissions,
+        limits: ShockerLimits,
+    ) -> None:
+        """PATCH /1/shockers/{shockerId}/shares/{sharedWithUserId}"""
+        body = {
+            "permissions": permissions.to_dict(),
+            "limits": limits.to_dict(),
+        }
+        self._client._request(
+            "PATCH",
+            f"/1/shockers/{shocker_id}/shares/{shared_with_user_id}",
+            json=body,
+        )
+
+    def remove_share(
+        self,
+        shocker_id: str | UUID,
+        shared_with_user_id: str | UUID,
+    ) -> None:
+        """DELETE /1/shockers/{shockerId}/shares/{sharedWithUserId}"""
+        self._client._request(
+            "DELETE",
+            f"/1/shockers/{shocker_id}/shares/{shared_with_user_id}",
+        )
+
+    def pause_share(
+        self,
+        shocker_id: str | UUID,
+        shared_with_user_id: str | UUID,
+        pause: bool,
+    ) -> Any:
+        """POST /1/shockers/{shockerId}/shares/{sharedWithUserId}/pause"""
+        return self._client._request(
+            "POST",
+            f"/1/shockers/{shocker_id}/shares/{shared_with_user_id}/pause",
+            json={"pause": pause},
+        )

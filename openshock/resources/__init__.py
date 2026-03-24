@@ -1,1 +1,0 @@
-# mostly here so "openshock.resources" is a package
