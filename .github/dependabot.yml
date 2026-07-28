@@ -5,7 +5,7 @@
 
 version: 2
 updates:
-  # Check for Nuget package updates
+  # Check for pip package updates
   - package-ecosystem: pip
     directory: /
     schedule:
